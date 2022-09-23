@@ -5,29 +5,43 @@ contract verifyDS{
 
     // _signer: given by ecrecover
     //_sig: It is not the original signature but a pointer to the signature
-    function verify(address _signer, string memory _message, bytes memory _sig)external pure returns(bool){
+    // function verify(address _signer, string memory _message, bytes memory _sig)external pure returns(bool){
 
-        bytes32 messageHash = getMessageHash(_message);
-        bytes32 ethSignedMessageHash = getETHSignedMessageHash(messageHash);
+    //     bytes32 messageHash = getMessageHash(_message);
+    //     bytes32 ethSignedMessageHash = getETHSignedMessageHash(messageHash);
 
-        return recover(ethSignedMessageHash, _sig) == _signer;
-
-    }
+    //     return recover(ethSignedMessageHash, _sig) == _signer;
+    // }
 
     function getMessageHash(string memory _message) public pure returns(bytes32){
         return keccak256(abi.encodePacked(_message));
     }
 
-    function getETHSignedMessageHash(bytes32 _messageHash) public pure returns(bytes32){
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32",_messageHash));
+    function setDomain(string memory name, string memory version) public view returns(bytes32){
+        return keccak256(abi.encode(
+            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+            keccak256(bytes(name)),
+            keccak256(bytes(version)),
+            4,
+            address(this)
+        ));
     }
 
-    function recover(bytes32 _getSignedMessageHash, bytes memory _sig)public pure returns(address){
+    // function getETHSignedMessageHash(bytes32 _messageHash) public pure returns(bytes32){
+    //     return keccak256(abi.encodePacked(_messageHash));
+    // }
+
+    function recover(bytes32 domain_separator,bytes32 _getSignedMessageHash, bytes memory _sig, address holder, address spender, uint256 nonce, uint256 expiry, bool allowed)public pure returns(address){
+        bytes32 digest =
+            keccak256(abi.encodePacked(
+                "\x19\x01",
+                domain_separator,
+                keccak256(abi.encode(_getSignedMessageHash, holder,spender,nonce,expiry,allowed))));
         (bytes32 r, bytes32 s, uint8 v) = _split(_sig);
-         return ecrecover(_getSignedMessageHash, v, r, s);
+         return ecrecover(digest, v, r, s);
     }
 
-    function _split(bytes memory _sig) internal pure returns(bytes32 r, bytes32 s, uint8 v){
+    function _split(bytes memory _sig) public pure returns(bytes32 r, bytes32 s, uint8 v){
         require(_sig.length == 65, "Invalid signature length");
         assembly{
             //first 32 bytes is data
