@@ -4,6 +4,8 @@
 
 // File: @openzeppelin/contracts/GSN/Context.sol
 
+
+
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
@@ -19,7 +21,7 @@ pragma solidity ^0.6.0;
  * This contract is only required for intermediate, library-like contracts.
  */
 abstract contract Context {
-    function _msgSender() internal view virtual returns (address payable) {
+    function _msgSender() internal view virtual returns (address sender) {
         return msg.sender;
     }
 
@@ -1477,13 +1479,6 @@ abstract contract ContextMixin {
 
 pragma solidity 0.6.6;
 
-
-
-
-
-
-
-
 contract UChildERC20 is
     ERC20,
     IChildToken,
@@ -1520,14 +1515,16 @@ contract UChildERC20 is
 
     // This is to support Native meta transactions
     // never use msg.sender directly, use _msgSender() instead
-    function _msgSender()
-        internal
-        override
-        view
-        returns (address payable sender)
-    {
-        return ContextMixin.msgSender();
-    }
+    // function _msgSender()
+    //     internal
+    //     override
+    //     view
+    //     returns (address payable sender)
+    // {
+    //     return ContextMixin.msgSender();
+    // }
+
+    
 
     function changeName(string calldata name_) external only(DEFAULT_ADMIN_ROLE) {
         setName(name_);
@@ -1562,22 +1559,74 @@ contract UChildERC20 is
 }
 
 // File: contracts/child/ChildToken/DappTokens/UChildDAI.sol
+// import "./libs/ERC2771Context.sol";
+pragma solidity 0.6.6;
+
+/**
+ * @dev Context variant with ERC2771 support.
+ */
+abstract contract ERC2771Context is Context, UChildERC20 {
+
+    address private immutable _trustedForwarder;
+
+    constructor(address trustedForwarder) public{
+        _trustedForwarder = trustedForwarder;
+    }
+
+    function isTrustedForwarder(address forwarder) public view virtual returns (bool) {
+        return forwarder == _trustedForwarder;
+    }
+
+    function _msgSender() internal view virtual override returns (address sender) {
+        if (isTrustedForwarder(msg.sender)) {
+            // The assembly code is more direct than the Solidity version using `abi.decode`.
+            /// @solidity memory-safe-assembly
+            assembly {
+                sender := shr(96, mload(sub(msize(), 20)))
+            }
+        } else {
+            return super._msgSender();
+        }
+    }
+
+    function _msgData() internal view virtual override returns (bytes memory) {
+        if (isTrustedForwarder(msg.sender)) {
+            return bytes(msg.data[:msg.data.length - 20]);
+        } else {
+            return super._msgData();
+        }
+    }
+}
 
 pragma solidity 0.6.6;
 
 
-contract UChildDAI is UChildERC20 {
+contract UChildDAI is ERC2771Context {
     // bytes32 public constant PERMIT_TYPEHASH = keccak256("Permit(address holder,address spender,uint256 nonce,uint256 expiry,bool allowed)");
     bytes32 public constant PERMIT_TYPEHASH = 0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb;
+    bytes32 public DOMAIN_SEPRATOR;
 
-    function setDomain(string memory name, string memory version) public view returns(bytes32){
-        return keccak256(abi.encode(
+    address private immutable _trustedForwarder;
+
+    constructor(address trustedForwarder) public ERC2771Context(address(trustedForwarder)) {
+        _trustedForwarder = trustedForwarder;
+        DOMAIN_SEPRATOR = bytes32(keccak256(abi.encode(
             keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-            keccak256(bytes(name)),
-            keccak256(bytes(version)),
-            4,
+            keccak256(bytes("DevCoin")),
+            keccak256(bytes("1")),
+            5,
             address(this)
-        ));
+        )));
+    }
+
+    function recover(bytes32 _getSignedMessageHash, bytes memory _sig, address holder, address spender, uint256 nonce, uint256 expiry, bool allowed)public view returns(address){
+        bytes32 digest =
+            keccak256(abi.encodePacked(
+                "\x19\x01",
+                DOMAIN_SEPRATOR,
+                keccak256(abi.encode(_getSignedMessageHash, holder,spender,nonce,expiry,allowed))));
+        (bytes32 r, bytes32 s, uint8 v) = _split(_sig);
+         return ecrecover(digest, v, r, s);
     }
 
     function _split(bytes memory _sig) internal pure returns(bytes32 r, bytes32 s, uint8 v){
@@ -1591,12 +1640,12 @@ contract UChildDAI is UChildERC20 {
         //does not require return bcoz solidity takes it implicitly
     }
 
-    function permit(bytes32 domain_separator, address holder, address spender, uint256 nonce, uint256 expiry,bool allowed, bytes calldata _sig) external
+    function permit(address holder, address spender, uint256 nonce, uint256 expiry,bool allowed, bytes calldata _sig) external
     {
         bytes32 digest =
             keccak256(abi.encodePacked(
                 "\x19\x01",
-                domain_separator,
+                DOMAIN_SEPRATOR,
                 keccak256(abi.encode(PERMIT_TYPEHASH,holder,spender,nonce,expiry,allowed))));
 
         require(holder != address(0), "Dai/invalid-address-0");

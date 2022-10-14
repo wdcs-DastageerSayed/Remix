@@ -17,13 +17,13 @@ contract verifyDS{
         return keccak256(abi.encodePacked(_message));
     }
 
-    function setDomain(string memory name, string memory version) public view returns(bytes32){
+    function setDomain(string memory name, string memory version) public pure returns(bytes32){
         return keccak256(abi.encode(
             keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
             keccak256(bytes(name)),
             keccak256(bytes(version)),
-            4,
-            address(this)
+            5,
+           "0xE3fc8FF80cA2F67687924e16370345CfA0cEadF6"
         ));
     }
 

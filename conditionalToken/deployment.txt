@@ -1,0 +1,4 @@
+Get collection Id
+Check for getOutcomeSlotCount 
+PrepareCondition
+getCOllectionId

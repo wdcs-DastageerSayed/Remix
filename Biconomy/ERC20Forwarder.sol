@@ -4,9 +4,9 @@ pragma experimental ABIEncoderV2;
 
 import "https://github.com/bcnmy/mexa/blob/master/contracts/6/libs/Ownable.sol";
 import "https://github.com/bcnmy/mexa/blob/master/contracts/6/forwarder/ERC20ForwarderStorage.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./libs/IERC20.sol";
+import "./libs/SafeERC20.sol";
+import "./libs/SafeMath.sol";
 import "https://github.com/bcnmy/mexa/blob/master/contracts/6/interfaces/IFeeManager.sol";
 import "https://github.com/bcnmy/mexa/blob/master/contracts/6/forwarder/BiconomyForwarder.sol";
 import "https://github.com/bcnmy/mexa/blob/master/contracts/6/interfaces/IERC20Permit.sol";
