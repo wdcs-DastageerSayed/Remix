@@ -1,4 +1,0 @@
-cli:
-  argv:
-  - ./ETHwallet.sol
-  skip_reverts: true
